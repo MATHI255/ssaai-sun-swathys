@@ -163,7 +163,12 @@ if prompt:
             with st.spinner("பதில் தயாராகிறது..."):
                 reply = ""
                 last_error = ""
-                models_to_try = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"]
+                models_to_try = [
+                    "gemini-3-flash-preview",
+                    "gemini-3.1-flash-lite-preview",
+                    "gemini-2.5-flash",
+                    "gemini-3.1-pro-preview"
+                ]
                 
                 for idx, model_name in enumerate(models_to_try):
                     try:
@@ -181,7 +186,7 @@ if prompt:
                     except Exception as e:
                         last_error = str(e)
                         if idx < len(models_to_try) - 1:
-                            time.sleep(2)
+                            time.sleep(1.5)
                         continue
                 
                 if not reply:
@@ -198,5 +203,3 @@ if prompt:
             # வாடிக்கையாளர் மொபைல் எண் கொடுத்தால் உடனடி ntfy.sh நோட்டிபிகேஷன் அனுப்புதல்
             combined_text = f"{user_text} {reply}"
             digits = "".join([c for c in combined_text if c.isdigit()])
-            if len(digits) >= 10:
-                send_instant_lead_alert(user_text if user_text else reply, st.session_state.messages)
