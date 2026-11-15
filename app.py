@@ -27,10 +27,27 @@ if not API_KEY:
     st.stop()
 
 @st.cache_resource
-def get_client():
-    return genai.Client(api_key=API_KEY)
+def get_client_and_models():
+    c = genai.Client(api_key=API_KEY)
+    valid_models = []
+    try:
+        # உங்கள் API Key-க்கு வேலை செய்யும் மாடல்களைத் தானாகவே பட்டியலிடுதல்
+        for m in c.models.list():
+            name = m.name.replace("models/", "")
+            actions = getattr(m, "supported_actions", []) or []
+            if "gemini" in name.lower() and "flash" in name.lower() and ("generateContent" in actions or not actions):
+                if "tts" not in name.lower() and "image" not in name.lower() and "thinking" not in name.lower():
+                    valid_models.append(name)
+    except Exception:
+        pass
 
-client = get_client()
+    # Fallback பட்டியல்
+    for fallback in ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
+        if fallback not in valid_models:
+            valid_models.append(fallback)
+    return c, valid_models
+
+client, AVAILABLE_MODELS = get_client_and_models()
 
 # 4. A-to-Z மீன் வளர்ப்பு, வண்ண மீன், சட்ட பாதுகாப்பு & தீவன அறிவுத் தொகுப்பு
 MASTER_KNOWLEDGE_BASE = f"""
@@ -148,7 +165,7 @@ if prompt:
             with st.spinner("பதில் தயாராகிறது..."):
                 reply = None
                 last_error = ""
-                for model_name in ["gemini-3.8-flash", "gemini-3-flash-preview"]:
+                for model_name in AVAILABLE_MODELS:
                     try:
                         response = client.models.generate_content(
                             model=model_name,
@@ -178,4 +195,3 @@ if prompt:
 
 # 6. சட்டப் பாதுகாப்பு அறிவிப்பு
 st.markdown("---")
-st.caption("⚠️ **பொறுப்புத் துறப்பு (Legal Disclaimer):** SSAAI என்பது செயற்கை நுண்ணறிவு (AI) அடிப்படையிலான வழிகாட்டி மட்டுமே. மீன் வளர்ப்பு மற்றும் தீவன அளவுகள் பண்ணையின் சூழலுக்கு ஏற்ப மாறுபடலாம்.")
