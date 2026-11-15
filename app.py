@@ -1,5 +1,6 @@
 import os
 import urllib.parse
+import urllib.request
 import streamlit as st
 from google import genai
 from google.genai import types
@@ -19,6 +20,7 @@ COMPANY_NAME = "Sun Swathys Aqua Farm"
 PRODUCT_NAME = "Swathys Sun Grow Fish Feed"
 ADMIN_NUMBERS = "9600871267, 8072621187"
 PRIMARY_WHATSAPP = "919600871267"
+NTFY_TOPIC = "sunswathys_leads_9600871267"  # உங்கள் போனில் ntfy ஆப்பில் இந்தப் பெயரை Subscribe செய்யவும்
 
 # 3. API Key எடுத்தல்
 API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
@@ -31,7 +33,6 @@ def get_client_and_models():
     c = genai.Client(api_key=API_KEY)
     valid_models = []
     try:
-        # உங்கள் API Key-க்கு வேலை செய்யும் மாடல்களைத் தானாகவே பட்டியலிடுதல்
         for m in c.models.list():
             name = m.name.replace("models/", "")
             actions = getattr(m, "supported_actions", []) or []
@@ -41,13 +42,30 @@ def get_client_and_models():
     except Exception:
         pass
 
-    # Fallback பட்டியல்
-    for fallback in ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
+    for fallback in ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-2.5-flash", "gemini-2.0-flash"]:
         if fallback not in valid_models:
             valid_models.append(fallback)
     return c, valid_models
 
 client, AVAILABLE_MODELS = get_client_and_models()
+
+def send_instant_lead_alert(customer_msg, chat_history):
+    """வாடிக்கையாளர் நம்பர் போட்டவுடன் உங்கள் மொபைலுக்கு உடனடியாக Notification அனுப்பும்"""
+    try:
+        recent_context = "\n".join([f"{m['role']}: {m['content'][:120]}" for m in chat_history[-4:]])
+        alert_body = f"🐟 புதிய வாடிக்கையாளர் தகவல்:\n{customer_msg}\n\nசமீபத்திய உரையாடல்:\n{recent_context}"
+        req = urllib.request.Request(
+            f"https://ntfy.sh{NTFY_TOPIC}",
+            data=alert_body.encode("utf-8"),
+            headers={
+                "Title": "New Fish Farm Lead - SSAAI",
+                "Priority": "high",
+                "Tags": "fish,telephone_receiver"
+            }
+        )
+        urllib.request.urlopen(req, timeout=5)
+    except Exception:
+        pass
 
 # 4. A-to-Z மீன் வளர்ப்பு, வண்ண மீன், சட்ட பாதுகாப்பு & தீவன அறிவுத் தொகுப்பு
 MASTER_KNOWLEDGE_BASE = f"""
@@ -178,20 +196,3 @@ if prompt:
                         if response and response.text:
                             reply = response.text
                             break
-                    except Exception as e:
-                        last_error = str(e)
-                        continue
-
-            if not reply:
-                reply = f"⚠️ தொழில்நுட்பக் கோளாறு ஏற்பட்டுள்ளது. விவரம்: `{last_error}`"
-
-            st.markdown(reply)
-            st.session_state.messages.append({"role": "assistant", "content": reply})
-
-            digits = "".join([c for c in user_text if c.isdigit()])
-            if len(digits) >= 10:
-                wa_text = urllib.parse.quote(f"வணக்கம் {COMPANY_NAME}, எனது விவரம்: {user_text}")
-                st.link_button("📲 WhatsApp மூலம் விவரங்களை உறுதிப்படுத்தவும்", f"https://wa.me{PRIMARY_WHATSAPP}?text={wa_text}")
-
-# 6. சட்டப் பாதுகாப்பு அறிவிப்பு
-st.markdown("---")
