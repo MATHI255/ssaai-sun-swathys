@@ -37,7 +37,6 @@ client = get_client()
 
 @st.cache_data(ttl=3600)
 def get_available_flash_models():
-    """உங்கள் API Key-ல் இயங்கும் சரியான மாடல்களைத் தானாகவே கண்டறியும்"""
     detected = []
     try:
         for m in client.models.list():
@@ -50,8 +49,7 @@ def get_available_flash_models():
                     detected.append(name)
     except Exception:
         pass
-    
-    # கண்டறியப்பட்ட மாடல்களுடன் நிலையான மாடல்களையும் இணைத்தல்
+
     fallback_list = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-1.5-flash"]
     final_models = []
     for m in detected + fallback_list:
@@ -188,7 +186,7 @@ if prompt:
                 reply = ""
                 error_logs = []
                 models_to_try = get_available_flash_models()
-                
+
                 for idx, model_name in enumerate(models_to_try):
                     try:
                         response = client.models.generate_content(
@@ -207,5 +205,7 @@ if prompt:
                         if idx < len(models_to_try) - 1:
                             time.sleep(1.5)
                         continue
-                
+
                 if not reply:
+                    all_errors = " | ".join(error_logs)
+                    if "429" in all_errors or "RESOURCE_EXHAUSTED" in all_errors:
