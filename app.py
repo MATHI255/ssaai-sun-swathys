@@ -55,7 +55,7 @@ Exclusive Feed Brand: {PRODUCT_NAME}
 - Setup & Breeding: Cement tanks or HDPE Tarpaulin tanks with dechlorinated water (Ideal Ornamental pH: 6.8 - 7.8). Use breeding traps or foxtail plants to protect newborn fry from adult fish.
 
 =========================================
-4. WATER VOLUME & WATER QUALITY TROUBLESOTING (தண்ணீர் அளவு & பிரச்சனை தீர்வுகள்)
+4. WATER VOLUME & WATER QUALITY TROUBLESHOOTING (தண்ணீர் அளவு & பிரச்சனை தீர்வுகள்)
 =========================================
 - Water Volume Calculation:
   * Formula: Length (ft) x Width (ft) x Depth (ft) x 28.3 = Total Liters.
@@ -81,7 +81,7 @@ SYSTEM_PROMPT = f"""
 You are 'SSAAI' (Sun Swathys Aqua AI), the official AI Aquaculture Advisor for '{COMPANY_NAME}'.
 
 SUPPORTED LANGUAGES:
-Always reply in the exact same language or Tanglish style the user uses (Tamil, Tanglish, English, Malayalam, Telugu, Kannada, or Hindi). Keep answers practical, friendly, well-structured with bullet points, and easy for farmers to understand.
+Always reply in the exact same language or Tanglish style the user speaks or types (Tamil, Tanglish, English, Malayalam, Telugu, Kannada, or Hindi). If the user sends a voice message (audio), listen carefully to the language they speak and respond in that same language. Keep answers practical, friendly, well-structured with bullet points, and easy for farmers to understand.
 
 Knowledge Base:
 {MASTER_KNOWLEDGE_BASE}
@@ -97,34 +97,6 @@ CRITICAL BUSINESS RULES (FOLLOW STRICTLY):
    Once they provide their details, confirm politely: "நன்றி! உங்கள் விவரங்கள் எங்கள் {COMPANY_NAME} குழுவிற்கு அனுப்பப்பட்டுவிட்டன. எங்கள் நிபுணர்கள் விரைவில் உங்களைத் தொடர்பு கொள்வார்கள். கீழே உள்ள பட்டனை அழுத்தி WhatsApp மூலமும் உடனடியாக உறுதிப்படுத்தலாம்."
 4. LEGAL SAFETY: Always respect Indian aquaculture laws (warn against banned African Catfish).
 """
-
-MODELS_TO_TRY = ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3-flash-preview"]
-
-def transcribe_audio(audio_bytes, mime_type):
-    """குரல் பதிவைத் துல்லியமான எழுத்துகளாக (Text) மாற்றும் பகுதி"""
-    transcribe_prompt = (
-        "Listen carefully to this aquaculture / fish farming voice question. "
-        "Transcribe the exact spoken words into clear text in the exact language spoken "
-        "(Tamil script if spoken in Tamil, English if spoken in English, etc.). "
-        "Fix minor background noise or pronunciation issues for fish farming terms "
-        "(e.g., cent, acre, Pangasius, Tilapia, Murrel, Rohu, Catla, Guppy, Molly, feed, ammonia, pH). "
-        "Output ONLY the transcribed question text, nothing else."
-    )
-    for model_name in MODELS_TO_TRY:
-        try:
-            res = client.models.generate_content(
-                model=model_name,
-                contents=[
-                    types.Part.from_bytes(data=audio_bytes, mime_type=mime_type),
-                    transcribe_prompt
-                ],
-                config=types.GenerateContentConfig(temperature=0.1)
-            )
-            if res.text and res.text.strip():
-                return res.text.strip()
-        except Exception:
-            continue
-    return None
 
 # 5. இணையப் பக்க முகப்பு (UI)
 st.title(f"🐟 SSAAI - {COMPANY_NAME}")
@@ -144,32 +116,60 @@ prompt = st.chat_input(
 )
 
 if prompt:
-    user_text = prompt.text.strip() if prompt.text else ""
+    user_text = prompt.text if prompt.text else ""
     user_audio = prompt.audio if hasattr(prompt, "audio") and prompt.audio else None
 
     if user_text or user_audio:
-        final_user_query = user_text
-
-        # மைக் மூலம் பேசியிருந்தால், முதலில் அதை எழுத்துகளாக (Text) மாற்றும்
-        if user_audio:
-            audio_bytes = user_audio.read()
-            mime_type = getattr(user_audio, "type", "audio/wav") or "audio/wav"
-            with st.spinner("🎤 உங்கள் குரலை எழுத்துகளாக மாற்றுகிறது..."):
-                transcribed = transcribe_audio(audio_bytes, mime_type)
-            if transcribed:
-                final_user_query = f"{user_text} {transcribed}".strip() if user_text else transcribed
-            elif not final_user_query:
-                final_user_query = "🎤 *(குரல் தெளிவாகக் கேட்கவில்லை, மீண்டும் பேசவும்)*"
-
-        # பயனர் பேசிய/டைப் செய்த வார்த்தைகளைத் திரையில் காட்டுதல்
-        display_msg = f"🎤 {final_user_query}" if user_audio else final_user_query
-        st.session_state.messages.append({"role": "user", "content": display_msg})
+        display_text = user_text if user_text else "🎤 *(குரல் பதிவு அனுப்பப்பட்டுள்ளது)*"
+        st.session_state.messages.append({"role": "user", "content": display_text})
 
         with st.chat_message("user"):
-            st.markdown(display_msg)
+            st.markdown(display_text)
+            if user_audio:
+                st.audio(user_audio)
 
-        # AI பதிலை உருவாக்குதல்
         with st.chat_message("assistant"):
             chat_contents = []
-            for msg in st.session_state.messages:
+            for msg in st.session_state.messages[:-1]:
                 role = "user" if msg["role"] == "user" else "model"
+                chat_contents.append(types.Content(role=role, parts=[types.Part.from_text(text=msg["content"])]))
+
+            current_parts = []
+            if user_text:
+                current_parts.append(types.Part.from_text(text=user_text))
+            if user_audio:
+                audio_bytes = user_audio.read()
+                mime_type = getattr(user_audio, "type", "audio/wav") or "audio/wav"
+                current_parts.append(types.Part.from_bytes(data=audio_bytes, mime_type=mime_type))
+
+            chat_contents.append(types.Content(role="user", parts=current_parts))
+
+            reply = None
+            last_error = ""
+
+            for model_name in ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3-flash-preview"]:
+                try:
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=chat_contents,
+                        config=types.GenerateContentConfig(
+                            system_instruction=SYSTEM_PROMPT,
+                            temperature=0.3,
+                        ),
+                    )
+                    reply = response.text
+                    break
+                except Exception as e:
+                    last_error = str(e)
+                    continue
+
+            if not reply:
+                reply = f"⚠️ தொழில்நுட்பக் கோளாறு ஏற்பட்டுள்ளது. விவரம்: `{last_error}`"
+
+            st.markdown(reply)
+            st.session_state.messages.append({"role": "assistant", "content": reply})
+
+            digits = "".join([c for c in user_text if c.isdigit()])
+            if len(digits) >= 10:
+                wa_text = urllib.parse.quote(f"வணக்கம் {COMPANY_NAME}, எனது விவரம்: {user_text}")
+                st.link_button("📲 WhatsApp மூலம் விவரங்களை உறுதிப்படுத்தவும்", f"https://wa.me{PRIMARY_WHATSAPP}?text={wa_text}")
