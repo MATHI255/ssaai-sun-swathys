@@ -161,8 +161,9 @@ if prompt:
             chat_contents.append(types.Content(role="user", parts=current_parts))
 
             with st.spinner("பதில் தயாராகிறது..."):
-                reply = "⚠️ தற்போது ஏஐ சர்வர் அதிகப்படியான பயன்பாட்டில் உள்ளது. தயவுசெய்து 10 வினாடிகள் கழித்து மீண்டும் முயற்சிக்கவும்."
-                models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-pro"]
+                reply = ""
+                last_error = ""
+                models_to_try = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"]
                 
                 for idx, model_name in enumerate(models_to_try):
                     try:
@@ -178,14 +179,18 @@ if prompt:
                             reply = response.text
                             break
                     except Exception as e:
-                        err_msg = str(e)
-                        if "503" in err_msg or "UNAVAILABLE" in err_msg or "429" in err_msg or "404" in err_msg:
-                            if idx < len(models_to_try) - 1:
-                                time.sleep(2)
-                            continue
-                        else:
-                            reply = f"⚠️ தொழில்நுட்பக் கோளாறு: {err_msg}"
-                            break
+                        last_error = str(e)
+                        if idx < len(models_to_try) - 1:
+                            time.sleep(2)
+                        continue
+                
+                if not reply:
+                    if "429" in last_error or "RESOURCE_EXHAUSTED" in last_error:
+                        reply = "⚠️ இலவச API வரம்பு (Quota) முடிந்துவிட்டது. புதிய API Key மாற்றவும் அல்லது சிறிது நேரம் கழித்து முயற்சிக்கவும்."
+                    elif "503" in last_error or "UNAVAILABLE" in last_error:
+                        reply = "⚠️ கூகுள் ஏஐ சர்வர் தற்போது அதிகப்படியான பயன்பாட்டில் உள்ளது. 1 நிமிடம் கழித்து மீண்டும் முயற்சிக்கவும்."
+                    else:
+                        reply = f"⚠️ தொழில்நுட்பக் கோளாறு: {last_error}"
 
             st.markdown(reply)
             st.session_state.messages.append({"role": "assistant", "content": reply})
@@ -195,7 +200,3 @@ if prompt:
             digits = "".join([c for c in combined_text if c.isdigit()])
             if len(digits) >= 10:
                 send_instant_lead_alert(user_text if user_text else reply, st.session_state.messages)
-
-            # நேரடி WhatsApp தொடர்பு பட்டன்
-            wa_msg = urllib.parse.quote("வணக்கம் Sun Swathys Aqua Farm, மீன் தீவனம் / வளர்ப்பு ஆலோசனை தேவை.")
-            st.link_button("📲 WhatsApp-ல் நேரடியாகத் தொடர்பு கொள்ள", f"https://wa.me{PRIMARY_WHATSAPP}?text={wa_msg}")
