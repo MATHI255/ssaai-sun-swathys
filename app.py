@@ -91,7 +91,7 @@ CRITICAL BUSINESS RULES:
 
 # 5. கம்பெனி லோகோ மற்றும் தலைப்பு வடிவமைப்பு
 if os.path.exists(LOGO_PATH):
-    col1, col2 = st.columns(, vertical_alignment="center")
+    col1, col2 = st.columns([1, 4], vertical_alignment="center")
     with col1:
         st.image(LOGO_PATH, width=110)
     with col2:
@@ -151,7 +151,6 @@ if prompt:
             success = False
             last_error = ""
 
-            # gemini-3.8-flash முதலில் இயங்கும் (அது இல்லையென்றால் அடுத்த மாடல் தானாக இயங்கும்)
             for model_name in ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3-flash"]:
                 try:
                     response_stream = client.models.generate_content_stream(
