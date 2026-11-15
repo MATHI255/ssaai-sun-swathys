@@ -1,18 +1,29 @@
 import os
-import gradio as gr
+import streamlit as st
 from google import genai
 from google.genai import types
 
-# 1. API Key-ஐ பாதுகாப்பாக எடுத்தல்
-API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
+# 1. பக்கத்தின் தலைப்பு & வடிவமைப்பு
+st.set_page_config(
+    page_title="SSAAI - Sun Swathys Aqua Farm",
+    page_icon="🐟",
+    layout="centered"
+)
+
+# 2. நிறுவனத்தின் விவரங்கள்
+COMPANY_NAME = "Sun Swathys Aqua Farm"
+PRODUCT_NAME = "Swathi Sun Grow Fish Feed"
+ADMIN_NUMBERS = "9600871267, 8072621187"
+
+# 3. API Key எடுத்தல்
+API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
+if not API_KEY:
+    st.error("⚠️ API Key அமைக்கப்படவில்லை. Streamlit Secrets-ல் GEMINI_API_KEY சேர்க்கவும்.")
+    st.stop()
+
 client = genai.Client(api_key=API_KEY)
 
-# 2. நிறுவனத்தின் விவரங்கள் (உங்கள் 2 நம்பர்களை இங்கே மாற்றவும் - கஸ்டமர்களுக்கு இது தெரியாது)
-COMPANY_NAME = "Sun Swathy Aqua Farm"
-PRODUCT_NAME = "Swathys Sun Grow Fish Feed"
-ADMIN_NUMBERS = "9600871267, 8072621187"  # உங்கள் 2 ரகசிய WhatsApp/Mobile நம்பர்கள்
-
-# 3. A-to-Z மீன் வளர்ப்பு, வண்ண மீன், சட்ட பாதுகாப்பு & தீவன அறிவுத் தொகுப்பு
+# 4. A-to-Z மீன் வளர்ப்பு, வண்ண மீன், சட்ட பாதுகாப்பு & தீவன அறிவுத் தொகுப்பு
 MASTER_KNOWLEDGE_BASE = f"""
 Company Name: {COMPANY_NAME}
 Exclusive Feed Brand: {PRODUCT_NAME}
@@ -63,7 +74,6 @@ Exclusive Feed Brand: {PRODUCT_NAME}
 - Tip: Use a Feeding Ring so {PRODUCT_NAME} does not waste, giving best FCR.
 """
 
-# 4. AI-க்கான வழிகாட்டுதல் (Strict Business & Privacy Rules)
 SYSTEM_PROMPT = f"""
 You are 'SSAAI' (Sun Swathys Aqua AI), the official AI Aquaculture Advisor for '{COMPANY_NAME}'.
 
@@ -91,52 +101,47 @@ CRITICAL BUSINESS RULES (FOLLOW STRICTLY):
 4. LEGAL SAFETY: Always respect Indian aquaculture laws (warn against banned African Catfish).
 """
 
-# 5. உரையாடல் மற்றும் என்குயரி சேமிப்பு செயல்பாடு
-def ssaai_advisor(user_message, history):
-    try:
-        if any(char.isdigit() for char in user_message) and len([c for c in user_message if c.isdigit()]) >= 10:
-            print(f"🚨 NEW CUSTOMER LEAD FOR ({ADMIN_NUMBERS}): {user_message}")
+# 5. இணையப் பக்க முகப்பு (UI)
+st.title(f"🐟 SSAAI - {COMPANY_NAME}")
+st.markdown("உணவு மீன்கள் மற்றும் வண்ண மீன்கள் வளர்ப்பு, தண்ணீர் பராமரிப்பு மற்றும் தீவன ஆலோசனைகளுக்கு உங்கள் கேள்விகளை **தமிழ், മലയാളം, తెలుగు, ಕನ್ನಡ, हिन्दी அல்லது English**-ல் கேளுங்கள்!")
 
-        chat_contents = []
-        for msg in history:
-            role = "user" if msg["role"] == "user" else "model"
-            chat_contents.append(types.Content(role=role, parts=[types.Part.from_text(text=msg["content"])]))
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+if prompt := st.chat_input("உங்கள் கேள்வியை இங்கே கேளுங்கள்... (Ask your question here...)"):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    if any(char.isdigit() for char in prompt) and len([c for c in prompt if c.isdigit()]) >= 10:
+        print(f"🚨 NEW CUSTOMER LEAD FOR ({ADMIN_NUMBERS}): {prompt}")
+
+    with st.chat_message("assistant"):
+        try:
+            chat_contents = []
+            for msg in st.session_state.messages:
+                role = "user" if msg["role"] == "user" else "model"
+                chat_contents.append(types.Content(role=role, parts=[types.Part.from_text(text=msg["content"])]))
+
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=chat_contents,
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    temperature=0.3,
+                ),
+            )
+            reply = response.text
+        except Exception as e:
+            reply = "மன்னிக்கவும், தற்போது சிறிய தொழில்நுட்பக் கோளாறு ஏற்பட்டுள்ளது. சற்று நேரம் கழித்து மீண்டும் முயற்சிக்கவும்."
         
-        chat_contents.append(types.Content(role="user", parts=[types.Part.from_text(text=user_message)]))
+        st.markdown(reply)
+        st.session_state.messages.append({"role": "assistant", "content": reply})
 
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=chat_contents,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                temperature=0.3,
-            ),
-        )
-        return response.text
-    except Exception as e:
-        return "மன்னிக்கவும், தற்போது சிறிய தொழில்நுட்பக் கோளாறு ஏற்பட்டுள்ளது. சற்று நேரம் கழித்து மீண்டும் முயற்சிக்கவும்."
-
-# 6. சட்டப் பாதுகாப்பு அறிவிப்புடன் கூடிய இணையப் பக்கம் (Web Interface with Legal Disclaimer)
-DISCLAIMER_TEXT = """
----
-⚠️ **பொறுப்புத் துறப்பு (Legal Disclaimer):** SSAAI என்பது செயற்கை நுண்ணறிவு (AI) அடிப்படையிலான ஒரு வழிகாட்டி மட்டுமே. இதில் வழங்கப்படும் தகவல்கள் பொதுவான ஆலோசனைக்கு மட்டுமே; இவை 100% துல்லியமானவை என்று உறுதியளிக்க முடியாது. தீவிர மீன் நோய்கள் அல்லது பெரிய முதலீடுகளுக்கு, அருகிலுள்ள மீன்வளத் துறை அதிகாரிகள் அல்லது நிபுணர்களின் நேரடி ஆலோசனையைப் பெறுமாறு கேட்டுக்கொள்கிறோம். பண்ணையில் ஏற்படும் இழப்புகளுக்கு **Sun Swathys Aqua Farm** பொறுப்பேற்காது.
-"""
-
-with gr.Blocks(theme=gr.themes.Soft()) as demo:
-    gr.Markdown(f"# 🐟 SSAAI - {COMPANY_NAME}")
-    gr.Markdown("உணவு மீன்கள் மற்றும் வண்ண மீன்கள் வளர்ப்பு, தண்ணீர் பராமரிப்பு மற்றும் தீவன ஆலோசனைகளுக்கு உங்கள் கேள்விகளை **தமிழ், മലയാളം, తెలుగు, ಕನ್ನಡ, हिन्दी அல்லது English**-ல் கேளுங்கள்!")
-    
-    gr.ChatInterface(
-        fn=ssaai_advisor,
-        examples=[
-            "என்னிடம் 1 சென்ட் இடம் மற்றும் ₹10,000 பட்ஜெட் உள்ளது, மீன் வளர்க்க என்ன செய்ய வேண்டும்?",
-            "என் குளத்தில் அம்மோனியா அளவு அதிகமாக உள்ளது, அதை எப்படி கட்டுப்படுத்துவது?",
-            "5000 ஃபிங்கர்லிங் (10 கிராம்) மீன்களுக்கு தினமும் எவ்வளவு தீவனம் போட வேண்டும்?",
-            "வண்ண மீன்கள் (Guppy, Molly, Goldfish) வளர்த்து லாபம் பார்ப்பது எப்படி?",
-            "எனக்கு நல்ல தரமான மீன் குஞ்சுகள் வாங்கித் தர முடியுமா?"
-        ]
-    )
-    gr.Markdown(DISCLAIMER_TEXT)
-
-if __name__ == "__main__":
-    demo.launch()
+# 6. சட்டப் பாதுகாப்பு அறிவிப்பு (Legal Disclaimer)
+st.markdown("---")
+st.caption("⚠️ **பொறுப்புத் துறப்பு (Legal Disclaimer):** SSAAI என்பது செயற்கை நுண்ணறிவு (AI) அடிப்படையிலான ஒரு வழிகாட்டி மட்டுமே. இதில் வழங்கப்படும் தகவல்கள் பொதுவான ஆலோசனைக்கு மட்டுமே; இவை 100% துல்லியமானவை என்று உறுதியளிக்க முடியாது. தீவிர மீன் நோய்கள் அல்லது பெரிய முதலீடுகளுக்கு, அருகிலுள்ள மீன்வளத் துறை அதிகாரிகள் அல்லது நிபுணர்களின் நேரடி ஆலோசனையைப் பெறுமாறு கேட்டுக்கொள்கிறோம். பண்ணையில் ஏற்படும் இழப்புகளுக்கு **Sun Swathys Aqua Farm** பொறுப்பேற்காது.")
