@@ -162,8 +162,7 @@ if prompt:
 
             with st.spinner("பதில் தயாராகிறது..."):
                 reply = "⚠️ தற்போது ஏஐ சர்வர் அதிகப்படியான பயன்பாட்டில் உள்ளது. தயவுசெய்து 10 வினாடிகள் கழித்து மீண்டும் முயற்சிக்கவும்."
-                # 503 எரரைத் தவிர்க்க மாற்று மாடல்கள் மற்றும் Auto-Retry வசதி
-                models_to_try = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"]
+                models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-pro"]
                 
                 for idx, model_name in enumerate(models_to_try):
                     try:
@@ -180,12 +179,12 @@ if prompt:
                             break
                     except Exception as e:
                         err_msg = str(e)
-                        if "503" in err_msg or "UNAVAILABLE" in err_msg or "429" in err_msg:
+                        if "503" in err_msg or "UNAVAILABLE" in err_msg or "429" in err_msg or "404" in err_msg:
                             if idx < len(models_to_try) - 1:
                                 time.sleep(2)
                             continue
                         else:
-                            reply = f"⚠️ தொழில்நுட்பக் கோளாறு ஏற்பட்டுள்ளது. சற்று நேரம் கழித்து மீண்டும் முயற்சிக்கவும்."
+                            reply = f"⚠️ தொழில்நுட்பக் கோளாறு: {err_msg}"
                             break
 
             st.markdown(reply)
@@ -199,3 +198,4 @@ if prompt:
 
             # நேரடி WhatsApp தொடர்பு பட்டன்
             wa_msg = urllib.parse.quote("வணக்கம் Sun Swathys Aqua Farm, மீன் தீவனம் / வளர்ப்பு ஆலோசனை தேவை.")
+            st.link_button("📲 WhatsApp-ல் நேரடியாகத் தொடர்பு கொள்ள", f"https://wa.me{PRIMARY_WHATSAPP}?text={wa_msg}")
