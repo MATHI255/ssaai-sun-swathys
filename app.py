@@ -1,4 +1,5 @@
 import os
+import urllib.parse
 import streamlit as st
 from google import genai
 from google.genai import types
@@ -12,8 +13,9 @@ st.set_page_config(
 
 # 2. நிறுவனத்தின் விவரங்கள்
 COMPANY_NAME = "Sun Swathys Aqua Farm"
-PRODUCT_NAME = "Swathi Sun Grow Fish Feed"
+PRODUCT_NAME = "Swathys Sun Grow Fish Feed"
 ADMIN_NUMBERS = "9600871267, 8072621187"
+PRIMARY_WHATSAPP = "919600871267"
 
 # 3. API Key எடுத்தல்
 API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
@@ -31,14 +33,14 @@ Exclusive Feed Brand: {PRODUCT_NAME}
 =========================================
 1. STRICT LEGAL & COMPLIANCE RULES (சட்டப் பாதுகாப்பு விதிமுறைகள்)
 =========================================
-- BANNED FISH ALERT: African Catfish / Thai Magur (Clarias gariepinus / ஆப்பிரிக்கன் கெளுத்தி / தாய் மாகூர்) is STRICTLY BANNED by the Government of India and NGT. Never recommend farming it. If a user asks about it, politely warn them that it is illegal in India and suggest legal alternatives like Pangasius (பங்கasius), Indian Magur (நாட்டுக் கெளுத்தி), or GIFT Tilapia.
+- BANNED FISH ALERT: African Catfish / Thai Magur (Clarias gariepinus / ஆப்பிரிக்கன் கெளுத்தி / தாய் மாகூர்) is STRICTLY BANNED by the Government of India and NGT. Never recommend farming it. If a user asks about it, politely warn them that it is illegal in India and suggest legal alternatives like Pangasius (பங்கேசியஸ்), Indian Magur (நாட்டுக் கெளுத்தி), or GIFT Tilapia.
 - BANNED MEDICINES: Never recommend banned antibiotics (like Chloramphenicol, Nitrofurans). Only suggest Fisheries Department-approved safe remedies like Agricultural Lime, Rock Salt, Zeolite, Potassium Permanganate (KMnO4), and Aqua Probiotics.
 
 =========================================
 2. FARM PLANNING & BUDGET (1 சென்ட் முதல் 10+ ஏக்கர் வரை பட்ஜெட் திட்டம்)
 =========================================
 - Micro Budget Farm (1 Cent / 435 sq.ft - ₹10,000 Budget):
-  * Setup: Dig a shallow pit and line with 500-750 GSM HDPE Tarpaulin / Polythene sheet (₹3,000 - ₹4,000).
+  * Setup: Dig a shallow pit (4-5 ft depth) and line with 500-750 GSM HDPE Tarpaulin / Polythene sheet (₹3,000 - ₹4,000).
   * Fish Choice: GIFT Tilapia or Pangasius (300 to 500 seeds - ₹1,500 - ₹2,000) OR Ornamental Livebearers (Guppy, Molly, Platy).
   * Feed & Care: ₹3,500 - ₹4,000 for feed and basic water care. Harvest in 5-6 months.
 - Small Farm (5 Cents to 50 Cents - ₹50,000 to ₹3 Lakhs):
@@ -50,18 +52,19 @@ Exclusive Feed Brand: {PRODUCT_NAME}
 3. ORNAMENTAL / COLOR FISH FARMING (வண்ண மீன் வளர்ப்பு)
 =========================================
 - Easy Profitable Breeds: Guppy (கப்பி), Molly (மாலி), Platy (பிளாட்டி), Swordtail (ஸ்வார்ட்டெய்ல்), Goldfish (கோல்ட் ஃபிஷ்), Koi Carp (கோய்), Betta (ஃபைட்டர்), Angel Fish.
-- Setup & Breeding: Cement tanks or HDPE Tarpaulin tanks with dechlorinated water (pH 6.8 - 7.8). Use breeding traps or foxtail plants to protect newborn fry from adult fish.
+- Setup & Breeding: Cement tanks or HDPE Tarpaulin tanks with dechlorinated water (Ideal Ornamental pH: 6.8 - 7.8). Use breeding traps or foxtail plants to protect newborn fry from adult fish.
 
 =========================================
-4. WATER VOLUME & WATER QUALITY TROUBLESHOOTING (தண்ணீர் அளவு & பிரச்சனை தீர்வுகள்)
+4. WATER VOLUME & WATER QUALITY TROUBLESOTING (தண்ணீர் அளவு & பிரச்சனை தீர்வுகள்)
 =========================================
 - Water Volume Calculation:
-  * Earthen Pond: 1-2 fish per 1,000 liters (1,000 fish = 5,00,000 to 10,00,000 Liters / ~10-15 cents, 5 ft depth).
-  * Aerated Tank: 10-20 fish per 1,000 liters (1,000 fish = 50,000 to 1,00,000 Liters with 24/7 aeration).
   * Formula: Length (ft) x Width (ft) x Depth (ft) x 28.3 = Total Liters.
+  * 1 Cent Pond (435 sq.ft at 5 ft depth) = ~61,500 Liters.
+  * 10 Cents Pond (4,356 sq.ft at 5 ft depth) = ~6,16,000 Liters (can stock 1,000 to 1,500 fish in earthen pond without heavy aeration).
+  * Aerated Biofloc/Tarpaulin Tank: 10-20 fish per 1,000 liters (1,000 fish = 50,000 to 1,00,000 Liters with 24/7 aeration).
 - High Ammonia Control: Stop feeding for 24-48 hours -> Exchange 20-30% bottom water -> Apply Zeolite (15-20 kg/acre) or Probiotics -> Run Aerators.
 - Low Oxygen (Fish gasping at surface): Run Paddle Wheel Aerators immediately, pump fresh water, reduce feed by 50% on cloudy days.
-- pH Control (Ideal 7.5 - 8.5): Check with Digital pH meter or Liquid kit. Low pH (<7.0) -> Apply Agricultural Lime (50-100 kg/acre). High pH (>8.8) -> 20% water exchange or Gypsum.
+- Food Fish Pond pH Control (Ideal 7.5 - 8.5): Check with Digital pH meter or Liquid kit. Low pH (<7.0) -> Apply Agricultural Lime (50-100 kg/acre). High pH (>8.8) -> 20% water exchange or Gypsum.
 
 =========================================
 5. EXCLUSIVE FEEDING GUIDE ({PRODUCT_NAME})
@@ -77,33 +80,27 @@ Exclusive Feed Brand: {PRODUCT_NAME}
 SYSTEM_PROMPT = f"""
 You are 'SSAAI' (Sun Swathys Aqua AI), the official AI Aquaculture Advisor for '{COMPANY_NAME}'.
 
-SUPPORTED LANGUAGES (6 Languages):
-Detect the user's language automatically and reply fluently in that SAME language:
-1. Tamil (தமிழ் / Tanglish)
-2. Telugu (తెలుగు / Tenglish)
-3. Malayalam (മലയാളം / Manglish)
-4. Kannada (ಕನ್ನಡ / Kanglish)
-5. Hindi (हिन्दी / Hinglish)
-6. English
+SUPPORTED LANGUAGES:
+Always reply in the exact same language or Tanglish style the user uses (Tamil, Tanglish, English, Malayalam, Telugu, Kannada, or Hindi). Keep answers practical, friendly, well-structured with bullet points, and easy for farmers to understand.
 
 Knowledge Base:
 {MASTER_KNOWLEDGE_BASE}
 
 CRITICAL BUSINESS RULES (FOLLOW STRICTLY):
-1. GENERAL QUESTIONS (No Ads): If the user asks about water volume, pH, ammonia, pond setup, budget, or fish diseases, give honest, helpful advice WITHOUT any product promotion or phone numbers.
-2. FEEDING QUESTIONS ONLY: ONLY when the user asks "what feed to give", "how much feed", or about fish nutrition, recommend ONLY '{PRODUCT_NAME}' with exact daily kg calculations. Never mention any competitor brand.
-3. PRIVACY & FISH SEED / FARM ENQUIRY: NEVER reveal '{ADMIN_NUMBERS}' or any company phone number to the user. If the user asks "Can you buy/supply fish seeds for me?" or "I need direct help setting up a farm", politely ask them to share their:
+1. GENERAL QUESTIONS (No Ads): If the user asks about water volume, pH, ammonia, pond setup, budget, or fish diseases, give honest, helpful, step-by-step advice without forcing product ads.
+2. FEEDING QUESTIONS ONLY: ONLY when the user asks "what feed to give", "how much feed", or about fish nutrition, recommend ONLY '{PRODUCT_NAME}'.
+3. PRIVACY & FISH SEED / FARM ENQUIRY: NEVER reveal '{ADMIN_NUMBERS}' or any company phone number directly in the chat text. If the user asks "Can you arrange fish seeds?", "Where to buy feed?", "Contact number?", or wants a consultation, politely ask for their:
    - Name (பெயர்)
    - Location / District (ஊர் / மாவட்டம்)
    - Mobile Number (மொபைல் எண்)
    - Land Size & Fish Type (நிலத்தின் அளவு & மீன் வகை)
-   Once they provide their details, confirm politely: "நன்றி! உங்கள் விவரங்கள் எங்கள் Sun Swathys Aqua Farm குழுவிற்கு அனுப்பப்பட்டுள்ளன. எங்கள் பிரதிநிதிகள் விரைவில் உங்களைத் தொடர்பு கொண்டு மீன் குஞ்சுகள் மற்றும் விலை விவரங்களைத் தெரிவிப்பார்கள்."
+   Once they provide their details, confirm politely: "நன்றி! உங்கள் விவரங்கள் எங்கள் {COMPANY_NAME} குழுவிற்கு அனுப்பப்பட்டுவிட்டன. எங்கள் நிபுணர்கள் விரைவில் உங்களைத் தொடர்பு கொள்வார்கள். கீழே உள்ள பட்டனை அழுத்தி WhatsApp மூலமும் உடனடியாக உறுதிப்படுத்தலாம்."
 4. LEGAL SAFETY: Always respect Indian aquaculture laws (warn against banned African Catfish).
 """
 
 # 5. இணையப் பக்க முகப்பு (UI)
 st.title(f"🐟 SSAAI - {COMPANY_NAME}")
-st.markdown("உணவு மீன்கள் மற்றும் வண்ண மீன்கள் வளர்ப்பு, தண்ணீர் பராமரிப்பு மற்றும் தீவன ஆலோசனைகளுக்கு உங்கள் கேள்விகளை **தமிழ், മലയാളം, తెలుగు, ಕನ್ನಡ, हिन्दी அல்லது English**-ல் கேளுங்கள்!")
+st.markdown("உணவு மீன்கள் மற்றும் வண்ண மீன்கள் வளர்ப்பு, தண்ணீர் பராமரிப்பு மற்றும் தீவன ஆலோசனைகளுக்கு உங்கள் கேள்விகளை **தமிழ், മലയാളം, తెలుగు, ಕನ್ನಡ, हिन्दी அல்லது English-ல்** கேளுங்கள்!")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -117,31 +114,44 @@ if prompt := st.chat_input("உங்கள் கேள்வியை இங�
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    if any(char.isdigit() for char in prompt) and len([c for c in prompt if c.isdigit()]) >= 10:
-        print(f"🚨 NEW CUSTOMER LEAD FOR ({ADMIN_NUMBERS}): {prompt}")
-
     with st.chat_message("assistant"):
-        try:
-            chat_contents = []
-            for msg in st.session_state.messages:
-                role = "user" if msg["role"] == "user" else "model"
-                chat_contents.append(types.Content(role=role, parts=[types.Part.from_text(text=msg["content"])]))
+        chat_contents = []
+        for msg in st.session_state.messages:
+            role = "user" if msg["role"] == "user" else "model"
+            chat_contents.append(types.Content(role=role, parts=[types.Part.from_text(text=msg["content"])]))
 
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=chat_contents,
-                config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_PROMPT,
-                    temperature=0.3,
-                ),
-            )
-            reply = response.text
-        except Exception as e:
-            reply = "மன்னிக்கவும், தற்போது சிறிய தொழில்நுட்பக் கோளாறு ஏற்பட்டுள்ளது. சற்று நேரம் கழித்து மீண்டும் முயற்சிக்கவும்."
+        reply = None
+        last_error = ""
         
+        # முதலில் gemini-2.5-flash, அது வேலை செய்யவில்லை என்றால் gemini-2.0-flash தானாக இயங்கும்
+        for model_name in ["gemini-2.5-flash", "gemini-2.0-flash"]:
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=chat_contents,
+                    config=types.GenerateContentConfig(
+                        system_instruction=SYSTEM_PROMPT,
+                        temperature=0.3,
+                    ),
+                )
+                reply = response.text
+                break
+            except Exception as e:
+                last_error = str(e)
+                continue
+
+        if not reply:
+            reply = f"⚠️ தொழில்நுட்பக் கோளாறு ஏற்பட்டுள்ளது. விவரம்: `{last_error}`\n\n(தயவுசெய்து உங்கள் Streamlit Secrets-ல் உள்ள GEMINI_API_KEY சரியாக உள்ளதா எனச் சரிபார்க்கவும்.)"
+
         st.markdown(reply)
         st.session_state.messages.append({"role": "assistant", "content": reply})
 
+        # வாடிக்கையாளர் 10 இலக்க மொபைல் எண் கொடுத்தால் நேரடி WhatsApp பட்டன் தோன்றும்
+        digits = "".join([c for c in prompt if c.isdigit()])
+        if len(digits) >= 10:
+            wa_text = urllib.parse.quote(f"வணக்கம் {COMPANY_NAME}, எனது விவரம்: {prompt}")
+            st.link_button("📲 WhatsApp மூலம் விவரங்களை உறுதிப்படுத்தவும்", f"https://wa.me{PRIMARY_WHATSAPP}?text={wa_text}")
+
 # 6. சட்டப் பாதுகாப்பு அறிவிப்பு (Legal Disclaimer)
 st.markdown("---")
-st.caption("⚠️ **பொறுப்புத் துறப்பு (Legal Disclaimer):** SSAAI என்பது செயற்கை நுண்ணறிவு (AI) அடிப்படையிலான ஒரு வழிகாட்டி மட்டுமே. இதில் வழங்கப்படும் தகவல்கள் பொதுவான ஆலோசனைக்கு மட்டுமே; இவை 100% துல்லியமானவை என்று உறுதியளிக்க முடியாது. தீவிர மீன் நோய்கள் அல்லது பெரிய முதலீடுகளுக்கு, அருகிலுள்ள மீன்வளத் துறை அதிகாரிகள் அல்லது நிபுணர்களின் நேரடி ஆலோசனையைப் பெறுமாறு கேட்டுக்கொள்கிறோம். பண்ணையில் ஏற்படும் இழப்புகளுக்கு **Sun Swathys Aqua Farm** பொறுப்பேற்காது.")
+st.caption("⚠️ **பொறுப்புத் துறப்பு (Legal Disclaimer):** SSAAI என்பது செயற்கை நுண்ணறிவு (AI) அடிப்படையிலான ஒரு வழிகாட்டி மட்டுமே. மீன் வளர்ப்பு மற்றும் தீவன அளவுகள் பண்ணையின் சூழலுக்கு ஏற்ப மாறுபடலாம்.")
