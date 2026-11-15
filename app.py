@@ -29,25 +29,10 @@ if not API_KEY:
     st.stop()
 
 @st.cache_resource
-def get_client_and_models():
-    c = genai.Client(api_key=API_KEY)
-    valid_models = []
-    try:
-        for m in c.models.list():
-            name = m.name.replace("models/", "")
-            actions = getattr(m, "supported_actions", []) or []
-            if "gemini" in name.lower() and "flash" in name.lower() and ("generateContent" in actions or not actions):
-                if "tts" not in name.lower() and "image" not in name.lower() and "thinking" not in name.lower():
-                    valid_models.append(name)
-    except Exception:
-        pass
+def get_client():
+    return genai.Client(api_key=API_KEY)
 
-    for fallback in ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-2.5-flash", "gemini-2.0-flash"]:
-        if fallback not in valid_models:
-            valid_models.append(fallback)
-    return c, valid_models
-
-client, AVAILABLE_MODELS = get_client_and_models()
+client = get_client()
 
 def send_instant_lead_alert(customer_msg, chat_history):
     try:
@@ -62,7 +47,7 @@ def send_instant_lead_alert(customer_msg, chat_history):
                 "Tags": "fish,telephone_receiver"
             }
         )
-        urllib.request.urlopen(req, timeout=5)
+        urllib.request.urlopen(req, timeout=4)
     except Exception:
         pass
 
@@ -164,7 +149,7 @@ if prompt:
 
         with st.chat_message("assistant", avatar=bot_avatar):
             chat_contents = []
-            for msg in st.session_state.messages[-7:-1]:
+            for msg in st.session_state.messages[-5:-1]:
                 role = "user" if msg["role"] == "user" else "model"
                 chat_contents.append(types.Content(role=role, parts=[types.Part.from_text(text=msg["content"])]))
 
@@ -172,7 +157,7 @@ if prompt:
             if user_text:
                 current_parts.append(types.Part.from_text(text=user_text))
             if user_audio:
-                audio_bytes = user_audio.read()
+                audio_bytes = user_audio.getvalue()
                 mime_type = getattr(user_audio, "type", "audio/wav") or "audio/wav"
                 current_parts.append(types.Part.from_bytes(data=audio_bytes, mime_type=mime_type))
 
@@ -180,7 +165,7 @@ if prompt:
 
             with st.spinner("பதில் தயாராகிறது..."):
                 reply = "⚠️ தற்போது தொழில்நுட்பக் கோளாறு ஏற்பட்டுள்ளது. சற்று நேரம் கழித்து மீண்டும் முயற்சிக்கவும்."
-                for model_name in AVAILABLE_MODELS:
+                for model_name in ["gemini-2.5-flash", "gemini-3.8-flash"]:
                     try:
                         response = client.models.generate_content(
                             model=model_name,
@@ -196,3 +181,16 @@ if prompt:
                     except Exception as e:
                         reply = f"⚠️ தொழில்நுட்பக் கோளாறு: `{str(e)}`"
                         continue
+
+            st.markdown(reply)
+            st.session_state.messages.append({"role": "assistant", "content": reply})
+
+            combined_text = f"{user_text} {reply}"
+            digits = "".join([c for c in combined_text if c.isdigit()])
+            if len(digits) >= 10:
+                send_instant_lead_alert(user_text if user_text else reply, st.session_state.messages)
+                wa_text = urllib.parse.quote(f"வணக்கம் {COMPANY_NAME}, எனது விவரம்: {user_text}")
+                st.link_button("📲 WhatsApp மூலம் விவரங்களை உறுதிப்படுத்தவும்", f"https://wa.me{PRIMARY_WHATSAPP}?text={wa_text}")
+
+# 6. சட்டப் பாதுகாப்பு அறிவிப்பு
+st.markdown("---")
