@@ -35,6 +35,30 @@ def get_client():
 
 client = get_client()
 
+@st.cache_data(ttl=3600)
+def get_available_flash_models():
+    """உங்கள் API Key-ல் இயங்கும் சரியான மாடல்களைத் தானாகவே கண்டறியும்"""
+    detected = []
+    try:
+        for m in client.models.list():
+            name = getattr(m, "name", "")
+            if name.startswith("models/"):
+                name = name.replace("models/", "")
+            methods = getattr(m, "supported_generation_methods", []) or []
+            if "generateContent" in methods and "flash" in name.lower():
+                if "image" not in name.lower() and "audio" not in name.lower() and "thinking" not in name.lower():
+                    detected.append(name)
+    except Exception:
+        pass
+    
+    # கண்டறியப்பட்ட மாடல்களுடன் நிலையான மாடல்களையும் இணைத்தல்
+    fallback_list = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-1.5-flash"]
+    final_models = []
+    for m in detected + fallback_list:
+        if m not in final_models:
+            final_models.append(m)
+    return final_models[:5]
+
 def send_instant_lead_alert(customer_msg, chat_history):
     try:
         recent_context = "\n".join([f"{m['role']}: {m['content'][:120]}" for m in chat_history[-4:]])
@@ -162,13 +186,8 @@ if prompt:
 
             with st.spinner("பதில் தயாராகிறது..."):
                 reply = ""
-                last_error = ""
-                models_to_try = [
-                    "gemini-3-flash-preview",
-                    "gemini-3.1-flash-lite-preview",
-                    "gemini-2.5-flash",
-                    "gemini-3.1-pro-preview"
-                ]
+                error_logs = []
+                models_to_try = get_available_flash_models()
                 
                 for idx, model_name in enumerate(models_to_try):
                     try:
@@ -184,22 +203,9 @@ if prompt:
                             reply = response.text
                             break
                     except Exception as e:
-                        last_error = str(e)
+                        error_logs.append(f"{model_name}: {str(e)[:100]}")
                         if idx < len(models_to_try) - 1:
                             time.sleep(1.5)
                         continue
                 
                 if not reply:
-                    if "429" in last_error or "RESOURCE_EXHAUSTED" in last_error:
-                        reply = "⚠️ இலவச API வரம்பு (Quota) முடிந்துவிட்டது. புதிய API Key மாற்றவும் அல்லது சிறிது நேரம் கழித்து முயற்சிக்கவும்."
-                    elif "503" in last_error or "UNAVAILABLE" in last_error:
-                        reply = "⚠️ கூகுள் ஏஐ சர்வர் தற்போது அதிகப்படியான பயன்பாட்டில் உள்ளது. 1 நிமிடம் கழித்து மீண்டும் முயற்சிக்கவும்."
-                    else:
-                        reply = f"⚠️ தொழில்நுட்பக் கோளாறு: {last_error}"
-
-            st.markdown(reply)
-            st.session_state.messages.append({"role": "assistant", "content": reply})
-
-            # வாடிக்கையாளர் மொபைல் எண் கொடுத்தால் உடனடி ntfy.sh நோட்டிபிகேஷன் அனுப்புதல்
-            combined_text = f"{user_text} {reply}"
-            digits = "".join([c for c in combined_text if c.isdigit()])
