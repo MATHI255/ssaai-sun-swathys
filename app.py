@@ -55,7 +55,7 @@ Exclusive Feed Brand: {PRODUCT_NAME}
 - Setup & Breeding: Cement tanks or HDPE Tarpaulin tanks with dechlorinated water (Ideal Ornamental pH: 6.8 - 7.8). Use breeding traps or foxtail plants to protect newborn fry from adult fish.
 
 =========================================
-4. WATER VOLUME & WATER QUALITY TROUBLESOTING (தண்ணீர் அளவு & பிரச்சனை தீர்வுகள்)
+4. WATER VOLUME & WATER QUALITY TROUBLESHOOTING (தண்ணீர் அளவு & பிரச்சனை தீர்வுகள்)
 =========================================
 - Water Volume Calculation:
   * Formula: Length (ft) x Width (ft) x Depth (ft) x 28.3 = Total Liters.
@@ -81,7 +81,7 @@ SYSTEM_PROMPT = f"""
 You are 'SSAAI' (Sun Swathys Aqua AI), the official AI Aquaculture Advisor for '{COMPANY_NAME}'.
 
 SUPPORTED LANGUAGES:
-Always reply in the exact same language or Tanglish style the user uses (Tamil, Tanglish, English, Malayalam, Telugu, Kannada, or Hindi). Keep answers practical, friendly, well-structured with bullet points, and easy for farmers to understand.
+Always reply in the exact same language or Tanglish style the user speaks or types (Tamil, Tanglish, English, Malayalam, Telugu, Kannada, or Hindi). If the user sends a voice message (audio), listen carefully to the language they speak and respond in that same language. Keep answers practical, friendly, well-structured with bullet points, and easy for farmers to understand.
 
 Knowledge Base:
 {MASTER_KNOWLEDGE_BASE}
@@ -100,7 +100,7 @@ CRITICAL BUSINESS RULES (FOLLOW STRICTLY):
 
 # 5. இணையப் பக்க முகப்பு (UI)
 st.title(f"🐟 SSAAI - {COMPANY_NAME}")
-st.markdown("உணவு மீன்கள் மற்றும் வண்ண மீன்கள் வளர்ப்பு, தண்ணீர் பராமரிப்பு மற்றும் தீவன ஆலோசனைகளுக்கு உங்கள் கேள்விகளை **தமிழ், മലയാളം, తెలుగు, ಕನ್ನಡ, हिन्दी அல்லது English-ல்** கேளுங்கள்!")
+st.markdown("உணவு மீன்கள் மற்றும் வண்ண மீன்கள் வளர்ப்பு, தண்ணீர் பராமரிப்பு மற்றும் தீவன ஆலோசனைகளுக்கு **டைப் செய்தோ அல்லது மைக் (🎤) மூலம் பேசியோ** உங்கள் கேள்விகளைக் கேளுங்கள்!")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -109,49 +109,67 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-if prompt := st.chat_input("உங்கள் கேள்வியை இங்கே கேளுங்கள்... (Ask your question here...)"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
+# டைப் + மைக் (Type + Mic) இரண்டும் சேர்ந்த உள்ளீட்டுப் பெட்டி
+prompt = st.chat_input(
+    "உங்கள் கேள்வியை டைப் செய்யவும் அல்லது மைக் (🎤) அழுத்திப் பேசவும்...",
+    accept_audio=True
+)
 
-    with st.chat_message("assistant"):
-        chat_contents = []
-        for msg in st.session_state.messages:
-            role = "user" if msg["role"] == "user" else "model"
-            chat_contents.append(types.Content(role=role, parts=[types.Part.from_text(text=msg["content"])]))
+if prompt:
+    user_text = prompt.text if prompt.text else ""
+    user_audio = prompt.audio if hasattr(prompt, "audio") and prompt.audio else None
 
-        reply = None
-        last_error = ""
-        
-        # முதலில் gemini-2.5-flash, அது வேலை செய்யவில்லை என்றால் gemini-2.0-flash தானாக இயங்கும்
-        for model_name in ["gemini-2.5-flash", "gemini-2.0-flash"]:
-            try:
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=chat_contents,
-                    config=types.GenerateContentConfig(
-                        system_instruction=SYSTEM_PROMPT,
-                        temperature=0.3,
-                    ),
-                )
-                reply = response.text
-                break
-            except Exception as e:
-                last_error = str(e)
-                continue
+    if user_text or user_audio:
+        display_text = user_text if user_text else "🎤 *(குரல் பதிவு அனுப்பப்பட்டுள்ளது)*"
+        st.session_state.messages.append({"role": "user", "content": display_text})
 
-        if not reply:
-            reply = f"⚠️ தொழில்நுட்பக் கோளாறு ஏற்பட்டுள்ளது. விவரம்: `{last_error}`\n\n(தயவுசெய்து உங்கள் Streamlit Secrets-ல் உள்ள GEMINI_API_KEY சரியாக உள்ளதா எனச் சரிபார்க்கவும்.)"
+        with st.chat_message("user"):
+            st.markdown(display_text)
+            if user_audio:
+                st.audio(user_audio)
 
-        st.markdown(reply)
-        st.session_state.messages.append({"role": "assistant", "content": reply})
+        with st.chat_message("assistant"):
+            chat_contents = []
+            for msg in st.session_state.messages[:-1]:
+                role = "user" if msg["role"] == "user" else "model"
+                chat_contents.append(types.Content(role=role, parts=[types.Part.from_text(text=msg["content"])]))
 
-        # வாடிக்கையாளர் 10 இலக்க மொபைல் எண் கொடுத்தால் நேரடி WhatsApp பட்டன் தோன்றும்
-        digits = "".join([c for c in prompt if c.isdigit()])
-        if len(digits) >= 10:
-            wa_text = urllib.parse.quote(f"வணக்கம் {COMPANY_NAME}, எனது விவரம்: {prompt}")
-            st.link_button("📲 WhatsApp மூலம் விவரங்களை உறுதிப்படுத்தவும்", f"https://wa.me{PRIMARY_WHATSAPP}?text={wa_text}")
+            current_parts = []
+            if user_text:
+                current_parts.append(types.Part.from_text(text=user_text))
+            if user_audio:
+                audio_bytes = user_audio.read()
+                mime_type = getattr(user_audio, "type", "audio/wav") or "audio/wav"
+                current_parts.append(types.Part.from_bytes(data=audio_bytes, mime_type=mime_type))
 
-# 6. சட்டப் பாதுகாப்பு அறிவிப்பு (Legal Disclaimer)
-st.markdown("---")
-st.caption("⚠️ **பொறுப்புத் துறப்பு (Legal Disclaimer):** SSAAI என்பது செயற்கை நுண்ணறிவு (AI) அடிப்படையிலான ஒரு வழிகாட்டி மட்டுமே. மீன் வளர்ப்பு மற்றும் தீவன அளவுகள் பண்ணையின் சூழலுக்கு ஏற்ப மாறுபடலாம்.")
+            chat_contents.append(types.Content(role="user", parts=current_parts))
+
+            reply = None
+            last_error = ""
+
+            for model_name in ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3-flash-preview"]:
+                try:
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=chat_contents,
+                        config=types.GenerateContentConfig(
+                            system_instruction=SYSTEM_PROMPT,
+                            temperature=0.3,
+                        ),
+                    )
+                    reply = response.text
+                    break
+                except Exception as e:
+                    last_error = str(e)
+                    continue
+
+            if not reply:
+                reply = f"⚠️ தொழில்நுட்பக் கோளாறு ஏற்பட்டுள்ளது. விவரம்: `{last_error}`"
+
+            st.markdown(reply)
+            st.session_state.messages.append({"role": "assistant", "content": reply})
+
+            digits = "".join([c for c in user_text if c.isdigit()])
+            if len(digits) >= 10:
+                wa_text = urllib.parse.quote(f"வணக்கம் {COMPANY_NAME}, எனது விவரம்: {user_text}")
+                st.link_button("📲 WhatsApp மூலம் விவரங்களை உறுதிப்படுத்தவும்", f"https://wa.me{PRIMARY_WHATSAPP}?text={wa_text}")
