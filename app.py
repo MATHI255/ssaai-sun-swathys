@@ -1,4 +1,5 @@
 import os
+import time
 import urllib.parse
 import urllib.request
 import streamlit as st
@@ -92,10 +93,6 @@ You are 'SSAAI' (Sun Swathys Aqua AI), the official AI Aquaculture Advisor for '
 SUPPORTED LANGUAGES:
 Always reply in the exact same language or Tanglish style the user speaks or types (Tamil, Tanglish, English, Malayalam, Telugu, Kannada, or Hindi). Keep answers concise, practical, well-structured with bullet points, and easy for farmers to understand.
 
-VOICE INPUT RULE:
-If the user sends an audio message, first write a single short line at the very top showing what they asked in their spoken language like this:
-**🗣️ உங்கள் கேள்வி:** [exact words spoken]
----
 Then immediately provide your helpful answer below it.
 
 Knowledge Base:
@@ -104,7 +101,7 @@ Knowledge Base:
 CRITICAL BUSINESS RULES:
 1. GENERAL QUESTIONS: Give honest, helpful advice without product ads.
 2. FEEDING QUESTIONS ONLY: Recommend ONLY '{PRODUCT_NAME}' when asked about feed.
-3. PRIVACY & ENQUIRY: NEVER reveal '{ADMIN_NUMBERS}' or company phone numbers in text. If asked for fish seeds, feed purchase, or contact, ask for their Name (பெயர்), Location/District (ஊர்/மாவட்டம்), Mobile Number (மொபைல் எண்), and Land Size & Fish Type (நிலத்தின் அளவு & மீன் வகை). Once given, confirm: "நன்றி! உங்கள் விவரங்கள் எங்கள் {COMPANY_NAME} குழுவிற்கு அனுப்பப்பட்டுவிட்டன. எங்கள் நிபுணர்கள் விரைவில் உங்களைத் தொடர்பு கொள்வார்கள். கீழே உள்ள பட்டனை அழுத்தி WhatsApp மூலமும் உடனடியாக உறுதிப்படுத்தலாம்."
+3. PRIVACY & ENQUIRY: NEVER reveal '{ADMIN_NUMBERS}' or company phone numbers in text. If asked for fish seeds, feed purchase, or consultation, politely ask for their Name, District/Location, and Mobile Number so our team can contact them.
 4. LEGAL SAFETY: Warn against banned African Catfish.
 """
 
@@ -114,11 +111,11 @@ if os.path.exists(LOGO_PATH):
     with col1:
         st.image(LOGO_PATH, width=110)
     with col2:
-        st.markdown(f"## SSAAI\n#### {COMPANY_NAME}")
+        st.markdown(f"### SSAAI\n#### {COMPANY_NAME}")
 else:
     st.title(f"🐟 SSAAI - {COMPANY_NAME}")
 
-st.markdown("உணவு மீன்கள் மற்றும் வண்ண மீன்கள் வளர்ப்பு, தண்ணீர் பராமரிப்பு மற்றும் தீவன ஆலோசனைகளுக்கு **டைப் செய்தோ அல்லது மைக் (🎤) மூலம் பேசியோ** கேளுங்கள்!")
+st.markdown("உணவு மீன்கள் மற்றும் வண்ண மீன்கள் வளர்ப்பு, தண்ணீர் பராமரிப்பு மற்றும் தீவன ஆலோசனைகளுக்கு டைப் செய்தோ அல்லது மைக் (🎤) மூலம் பேசியோ கேளுங்கள்!")
 st.divider()
 
 if "messages" not in st.session_state:
@@ -164,8 +161,11 @@ if prompt:
             chat_contents.append(types.Content(role="user", parts=current_parts))
 
             with st.spinner("பதில் தயாராகிறது..."):
-                reply = "⚠️ தற்போது தொழில்நுட்பக் கோளாறு ஏற்பட்டுள்ளது. சற்று நேரம் கழித்து மீண்டும் முயற்சிக்கவும்."
-                for model_name in ["gemini-2.5-flash", "gemini-3.8-flash"]:
+                reply = "⚠️ தற்போது ஏஐ சர்வர் அதிகப்படியான பயன்பாட்டில் உள்ளது. தயவுசெய்து 10 வினாடிகள் கழித்து மீண்டும் முயற்சிக்கவும்."
+                # 503 எரரைத் தவிர்க்க மாற்று மாடல்கள் மற்றும் Auto-Retry வசதி
+                models_to_try = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"]
+                
+                for idx, model_name in enumerate(models_to_try):
                     try:
                         response = client.models.generate_content(
                             model=model_name,
@@ -179,18 +179,23 @@ if prompt:
                             reply = response.text
                             break
                     except Exception as e:
-                        reply = f"⚠️ தொழில்நுட்பக் கோளாறு: `{str(e)}`"
-                        continue
+                        err_msg = str(e)
+                        if "503" in err_msg or "UNAVAILABLE" in err_msg or "429" in err_msg:
+                            if idx < len(models_to_try) - 1:
+                                time.sleep(2)
+                            continue
+                        else:
+                            reply = f"⚠️ தொழில்நுட்பக் கோளாறு ஏற்பட்டுள்ளது. சற்று நேரம் கழித்து மீண்டும் முயற்சிக்கவும்."
+                            break
 
             st.markdown(reply)
             st.session_state.messages.append({"role": "assistant", "content": reply})
 
+            # வாடிக்கையாளர் மொபைல் எண் கொடுத்தால் உடனடி ntfy.sh நோட்டிபிகேஷன் அனுப்புதல்
             combined_text = f"{user_text} {reply}"
             digits = "".join([c for c in combined_text if c.isdigit()])
             if len(digits) >= 10:
                 send_instant_lead_alert(user_text if user_text else reply, st.session_state.messages)
-                wa_text = urllib.parse.quote(f"வணக்கம் {COMPANY_NAME}, எனது விவரம்: {user_text}")
-                st.link_button("📲 WhatsApp மூலம் விவரங்களை உறுதிப்படுத்தவும்", f"https://wa.me{PRIMARY_WHATSAPP}?text={wa_text}")
 
-# 6. சட்டப் பாதுகாப்பு அறிவிப்பு
-st.markdown("---")
+            # நேரடி WhatsApp தொடர்பு பட்டன்
+            wa_msg = urllib.parse.quote("வணக்கம் Sun Swathys Aqua Farm, மீன் தீவனம் / வளர்ப்பு ஆலோசனை தேவை.")
