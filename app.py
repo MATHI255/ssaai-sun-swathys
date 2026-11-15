@@ -4,7 +4,7 @@ import streamlit as st
 from google import genai
 from google.genai import types
 
-# 1. பக்கத்தின் தலைப்பு & வடிவமைப்பு (லோகோ இருந்தால் Page Icon-ஆகவும் வரும்)
+# 1. பக்கத்தின் தலைப்பு & வடிவமைப்பு
 LOGO_PATH = "logo.png"
 page_icon_img = LOGO_PATH if os.path.exists(LOGO_PATH) else "🐟"
 
@@ -89,14 +89,14 @@ CRITICAL BUSINESS RULES:
 4. LEGAL SAFETY: Warn against banned African Catfish.
 """
 
-# 5. கம்பெனி லோகோ மற்றும் தலைப்பு வடிவமைப்பு (Company Branding Header)
+# 5. கம்பெனி லோகோ மற்றும் தலைப்பு வடிவமைப்பு
 if os.path.exists(LOGO_PATH):
-    col1, col2 = st.columns([1, 4], vertical_alignment="center")
+    col1, col2 = st.columns(, vertical_alignment="center")
     with col1:
         st.image(LOGO_PATH, width=110)
     with col2:
-        st.title(f"SSAAI")
-        st.subheader(f"{COMPANY_NAME}")
+        st.title("SSAAI")
+        st.subheader(COMPANY_NAME)
 else:
     st.title(f"🐟 SSAAI - {COMPANY_NAME}")
 
@@ -106,7 +106,6 @@ st.divider()
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# சாட் அவதார் (AI பதிலுக்கு கம்பெனி லோகோவை ஐகானாகக் காட்டும்)
 bot_avatar = LOGO_PATH if os.path.exists(LOGO_PATH) else "🐟"
 
 for message in st.session_state.messages:
@@ -152,7 +151,8 @@ if prompt:
             success = False
             last_error = ""
 
-            for model_name in ["gemini-3-flash-preview", "gemini-2.5-flash"]:
+            # gemini-3.8-flash முதலில் இயங்கும் (அது இல்லையென்றால் அடுத்த மாடல் தானாக இயங்கும்)
+            for model_name in ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3-flash"]:
                 try:
                     response_stream = client.models.generate_content_stream(
                         model=model_name,
@@ -180,7 +180,6 @@ if prompt:
 
             st.session_state.messages.append({"role": "assistant", "content": full_reply})
 
-            # 10 இலக்க மொபைல் எண் இருந்தால் WhatsApp பட்டன் காட்டுதல்
             digits = "".join([c for c in user_text if c.isdigit()])
             if len(digits) >= 10:
                 wa_text = urllib.parse.quote(f"வணக்கம் {COMPANY_NAME}, எனது விவரம்: {user_text}")
