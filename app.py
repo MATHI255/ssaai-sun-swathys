@@ -6,7 +6,6 @@ import streamlit as st
 from google import genai
 from google.genai import types
 
-# 1. பக்கத்தின் தலைப்பு & வடிவமைப்பு
 LOGO_PATH = "logo.png"
 page_icon_img = LOGO_PATH if os.path.exists(LOGO_PATH) else "🐟"
 
@@ -16,14 +15,12 @@ st.set_page_config(
     layout="centered"
 )
 
-# 2. நிறுவனத்தின் விவரங்கள்
 COMPANY_NAME = "Sun Swathys Aqua Farm"
 PRODUCT_NAME = "Swathys Sun Grow Fish Feed"
 ADMIN_NUMBERS = "9600871267, 8072621187"
 PRIMARY_WHATSAPP = "919600871267"
 NTFY_TOPIC = "sunswathys_leads_9600871267"
 
-# 3. API Key எடுத்தல்
 API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
 if not API_KEY:
     st.error("⚠️ API Key அமைக்கப்படவில்லை. Streamlit Secrets-ல் GEMINI_API_KEY சேர்க்கவும்.")
@@ -40,22 +37,17 @@ def get_available_flash_models():
     detected = []
     try:
         for m in client.models.list():
-            name = getattr(m, "name", "")
-            if name.startswith("models/"):
-                name = name.replace("models/", "")
+            name = getattr(m, "name", "").replace("models/", "")
             methods = getattr(m, "supported_generation_methods", []) or []
             if "generateContent" in methods and "flash" in name.lower():
                 if "image" not in name.lower() and "audio" not in name.lower() and "thinking" not in name.lower():
                     detected.append(name)
     except Exception:
         pass
-
-    fallback_list = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-1.5-flash"]
-    final_models = []
-    for m in detected + fallback_list:
-        if m not in final_models:
-            final_models.append(m)
-    return final_models[:5]
+    for m in ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"]:
+        if m not in detected:
+            detected.append(m)
+    return detected[:4]
 
 def send_instant_lead_alert(customer_msg, chat_history):
     try:
@@ -64,17 +56,12 @@ def send_instant_lead_alert(customer_msg, chat_history):
         req = urllib.request.Request(
             f"https://ntfy.sh{NTFY_TOPIC}",
             data=alert_body.encode("utf-8"),
-            headers={
-                "Title": "New Fish Farm Lead - SSAAI",
-                "Priority": "high",
-                "Tags": "fish,telephone_receiver"
-            }
+            headers={"Title": "New Fish Farm Lead - SSAAI", "Priority": "high", "Tags": "fish,telephone_receiver"}
         )
         urllib.request.urlopen(req, timeout=4)
     except Exception:
         pass
 
-# 4. A-to-Z மீன் வளர்ப்பு, வண்ண மீன், சட்ட பாதுகாப்பு & தீவன அறிவுத் தொகுப்பு
 MASTER_KNOWLEDGE_BASE = f"""
 Company Name: {COMPANY_NAME}
 Exclusive Feed Brand: {PRODUCT_NAME}
@@ -115,8 +102,6 @@ You are 'SSAAI' (Sun Swathys Aqua AI), the official AI Aquaculture Advisor for '
 SUPPORTED LANGUAGES:
 Always reply in the exact same language or Tanglish style the user speaks or types (Tamil, Tanglish, English, Malayalam, Telugu, Kannada, or Hindi). Keep answers concise, practical, well-structured with bullet points, and easy for farmers to understand.
 
-Then immediately provide your helpful answer below it.
-
 Knowledge Base:
 {MASTER_KNOWLEDGE_BASE}
 
@@ -127,7 +112,6 @@ CRITICAL BUSINESS RULES:
 4. LEGAL SAFETY: Warn against banned African Catfish.
 """
 
-# 5. கம்பெனி லோகோ மற்றும் தலைப்பு வடிவமைப்பு
 if os.path.exists(LOGO_PATH):
     col1, col2 = st.columns([1.2, 4])
     with col1:
@@ -150,10 +134,7 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"], avatar=avatar_to_use):
         st.markdown(message["content"])
 
-prompt = st.chat_input(
-    "உங்கள் கேள்வியை டைப் செய்யவும் அல்லது மைக் (🎤) அழுத்திப் பேசவும்...",
-    accept_audio=True
-)
+prompt = st.chat_input("உங்கள் கேள்வியை டைப் செய்யவும் அல்லது மைக் (🎤) அழுத்திப் பேசவும்...", accept_audio=True)
 
 if prompt:
     user_text = prompt.text.strip() if prompt.text else ""
@@ -185,27 +166,29 @@ if prompt:
             with st.spinner("பதில் தயாராகிறது..."):
                 reply = ""
                 error_logs = []
-                models_to_try = get_available_flash_models()
-
-                for idx, model_name in enumerate(models_to_try):
+                for model_name in get_available_flash_models():
                     try:
                         response = client.models.generate_content(
                             model=model_name,
                             contents=chat_contents,
-                            config=types.GenerateContentConfig(
-                                system_instruction=SYSTEM_PROMPT,
-                                temperature=0.3,
-                            ),
+                            config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT, temperature=0.3),
                         )
                         if response and response.text:
                             reply = response.text
                             break
                     except Exception as e:
-                        error_logs.append(f"{model_name}: {str(e)[:100]}")
-                        if idx < len(models_to_try) - 1:
-                            time.sleep(1.5)
-                        continue
+                        error_logs.append(f"{model_name}: {str(e)[:80]}")
+                        time.sleep(1)
 
-                if not reply:
-                    all_errors = " | ".join(error_logs)
-                    if "429" in all_errors or "RESOURCE_EXHAUSTED" in all_errors:
+                reply = reply or f"⚠️ தற்போது ஏஐ சர்வர் பிஸியாக உள்ளது. விவரம்: {' | '.join(error_logs)}"
+
+            st.markdown(reply)
+            st.session_state.messages.append({"role": "assistant", "content": reply})
+
+            combined_text = f"{user_text} {reply}"
+            digits = "".join([c for c in combined_text if c.isdigit()])
+            if len(digits) >= 10:
+                send_instant_lead_alert(user_text if user_text else reply, st.session_state.messages)
+
+            wa_msg = urllib.parse.quote("வணக்கம் Sun Swathys Aqua Farm, மீன் தீவனம் / வளர்ப்பு ஆலோசனை தேவை.")
+            st.link_button("📲 WhatsApp-ல் நேரடியாகத் தொடர்பு கொள்ள", f"https://wa.me{PRIMARY_WHATSAPP}?text={wa_msg}")
