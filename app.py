@@ -28,26 +28,9 @@ if not API_KEY:
 
 @st.cache_resource
 def get_client():
-    return genai.Client(api_key=API_KEY)
+    return genai.Client(api_key=API_KEY, http_options={"api_version": "v1beta"})
 
 client = get_client()
-
-@st.cache_data(ttl=3600)
-def get_available_flash_models():
-    detected = []
-    try:
-        for m in client.models.list():
-            name = getattr(m, "name", "").replace("models/", "")
-            methods = getattr(m, "supported_generation_methods", []) or []
-            if "generateContent" in methods and "flash" in name.lower():
-                if "image" not in name.lower() and "audio" not in name.lower() and "thinking" not in name.lower():
-                    detected.append(name)
-    except Exception:
-        pass
-    for m in ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"]:
-        if m not in detected:
-            detected.append(m)
-    return detected[:4]
 
 def send_instant_lead_alert(customer_msg, chat_history):
     try:
@@ -166,7 +149,8 @@ if prompt:
             with st.spinner("பதில் தயாராகிறது..."):
                 reply = ""
                 error_logs = []
-                for model_name in get_available_flash_models():
+                models_to_try = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3-flash-preview", "gemini-3.1-flash-lite-preview"]
+                for model_name in models_to_try:
                     try:
                         response = client.models.generate_content(
                             model=model_name,
@@ -177,7 +161,7 @@ if prompt:
                             reply = response.text
                             break
                     except Exception as e:
-                        error_logs.append(f"{model_name}: {str(e)[:80]}")
+                        error_logs.append(f"{model_name}: {str(e)[:90]}")
                         time.sleep(1)
 
                 reply = reply or f"⚠️ தற்போது ஏஐ சர்வர் பிஸியாக உள்ளது. விவரம்: {' | '.join(error_logs)}"
