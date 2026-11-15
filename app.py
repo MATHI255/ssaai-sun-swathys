@@ -146,7 +146,6 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"], avatar=avatar_to_use):
         st.markdown(message["content"])
 
-# டைப் + மைக் உள்ளீட்டுப் பெட்டி
 prompt = st.chat_input(
     "உங்கள் கேள்வியை டைப் செய்யவும் அல்லது மைக் (🎤) அழுத்திப் பேசவும்...",
     accept_audio=True
@@ -180,8 +179,7 @@ if prompt:
             chat_contents.append(types.Content(role="user", parts=current_parts))
 
             with st.spinner("பதில் தயாராகிறது..."):
-                reply = None
-                last_error = ""
+                reply = "⚠️ தற்போது தொழில்நுட்பக் கோளாறு ஏற்பட்டுள்ளது. சற்று நேரம் கழித்து மீண்டும் முயற்சிக்கவும்."
                 for model_name in AVAILABLE_MODELS:
                     try:
                         response = client.models.generate_content(
@@ -196,7 +194,5 @@ if prompt:
                             reply = response.text
                             break
                     except Exception as e:
-                        last_error = str(e)
+                        reply = f"⚠️ தொழில்நுட்பக் கோளாறு: `{str(e)}`"
                         continue
-
-            if not reply:
