@@ -91,12 +91,11 @@ CRITICAL BUSINESS RULES:
 
 # 5. கம்பெனி லோகோ மற்றும் தலைப்பு வடிவமைப்பு
 if os.path.exists(LOGO_PATH):
-    col1, col2 = st.columns([1, 4], vertical_alignment="center")
+    col1, col2 = st.columns([1.2, 4])
     with col1:
         st.image(LOGO_PATH, width=110)
     with col2:
-        st.title("SSAAI")
-        st.subheader(COMPANY_NAME)
+        st.markdown(f"## SSAAI\n#### {COMPANY_NAME}")
 else:
     st.title(f"🐟 SSAAI - {COMPANY_NAME}")
 
@@ -146,38 +145,31 @@ if prompt:
 
             chat_contents.append(types.Content(role="user", parts=current_parts))
 
-            reply_placeholder = st.empty()
-            full_reply = ""
-            success = False
-            last_error = ""
+            with st.spinner("பதில் தயாராகிறது..."):
+                reply = None
+                last_error = ""
+                for model_name in ["gemini-3.8-flash", "gemini-3-flash-preview"]:
+                    try:
+                        response = client.models.generate_content(
+                            model=model_name,
+                            contents=chat_contents,
+                            config=types.GenerateContentConfig(
+                                system_instruction=SYSTEM_PROMPT,
+                                temperature=0.3,
+                            ),
+                        )
+                        if response and response.text:
+                            reply = response.text
+                            break
+                    except Exception as e:
+                        last_error = str(e)
+                        continue
 
-            for model_name in ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3-flash"]:
-                try:
-                    response_stream = client.models.generate_content_stream(
-                        model=model_name,
-                        contents=chat_contents,
-                        config=types.GenerateContentConfig(
-                            system_instruction=SYSTEM_PROMPT,
-                            temperature=0.3,
-                        ),
-                    )
-                    for chunk in response_stream:
-                        if chunk.text:
-                            full_reply += chunk.text
-                            reply_placeholder.markdown(full_reply + "▌")
-                    reply_placeholder.markdown(full_reply)
-                    success = True
-                    break
-                except Exception as e:
-                    last_error = str(e)
-                    full_reply = ""
-                    continue
+            if not reply:
+                reply = f"⚠️ தொழில்நுட்பக் கோளாறு ஏற்பட்டுள்ளது. விவரம்: `{last_error}`"
 
-            if not success:
-                full_reply = f"⚠️ தொழில்நுட்பக் கோளாறு ஏற்பட்டுள்ளது. விவரம்: `{last_error}`"
-                reply_placeholder.markdown(full_reply)
-
-            st.session_state.messages.append({"role": "assistant", "content": full_reply})
+            st.markdown(reply)
+            st.session_state.messages.append({"role": "assistant", "content": reply})
 
             digits = "".join([c for c in user_text if c.isdigit()])
             if len(digits) >= 10:
