@@ -20,7 +20,7 @@ COMPANY_NAME = "Sun Swathys Aqua Farm"
 PRODUCT_NAME = "Swathys Sun Grow Fish Feed"
 ADMIN_NUMBERS = "9600871267, 8072621187"
 PRIMARY_WHATSAPP = "919600871267"
-NTFY_TOPIC = "sunswathys_leads_9600871267"  # உங்கள் போனில் ntfy ஆப்பில் இந்தப் பெயரை Subscribe செய்யவும்
+NTFY_TOPIC = "sunswathys_leads_9600871267"
 
 # 3. API Key எடுத்தல்
 API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
@@ -50,7 +50,6 @@ def get_client_and_models():
 client, AVAILABLE_MODELS = get_client_and_models()
 
 def send_instant_lead_alert(customer_msg, chat_history):
-    """வாடிக்கையாளர் நம்பர் போட்டவுடன் உங்கள் மொபைலுக்கு உடனடியாக Notification அனுப்பும்"""
     try:
         recent_context = "\n".join([f"{m['role']}: {m['content'][:120]}" for m in chat_history[-4:]])
         alert_body = f"🐟 புதிய வாடிக்கையாளர் தகவல்:\n{customer_msg}\n\nசமீபத்திய உரையாடல்:\n{recent_context}"
@@ -196,3 +195,8 @@ if prompt:
                         if response and response.text:
                             reply = response.text
                             break
+                    except Exception as e:
+                        last_error = str(e)
+                        continue
+
+            if not reply:
