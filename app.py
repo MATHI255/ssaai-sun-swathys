@@ -34,16 +34,20 @@ client = get_client()
 
 def send_instant_lead_alert(customer_msg, chat_history):
     try:
-        recent_context = "\n".join([f"{m['role']}: {m['content'][:120]}" for m in chat_history[-4:]])
-        alert_body = f"🐟 புதிய வாடிக்கையாளர் தகவல்:\n{customer_msg}\n\nசமீபத்திய உரையாடல்:\n{recent_context}"
+        recent_context = "\n".join([f"{m['role'].upper()}: {m['content'][:160]}" for m in chat_history[-4:]])
+        alert_body = f"New Customer Lead!\nMessage: {customer_msg}\n\nRecent Chat:\n{recent_context}"
         req = urllib.request.Request(
             f"https://ntfy.sh{NTFY_TOPIC}",
             data=alert_body.encode("utf-8"),
-            headers={"Title": "New Fish Farm Lead - SSAAI", "Priority": "high", "Tags": "fish,telephone_receiver"}
+            headers={
+                "Title": "New Fish Farm Lead - SSAAI",
+                "Priority": "high",
+                "Tags": "fish,telephone_receiver"
+            }
         )
-        urllib.request.urlopen(req, timeout=4)
-    except Exception:
-        pass
+        urllib.request.urlopen(req, timeout=6)
+    except Exception as e:
+        st.toast(f"Notification Error: {e}")
 
 MASTER_KNOWLEDGE_BASE = f"""
 Company Name: {COMPANY_NAME}
