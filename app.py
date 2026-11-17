@@ -45,9 +45,9 @@ def send_instant_lead_alert(customer_msg, chat_history):
                 "Tags": "fish,telephone_receiver"
             }
         )
-        urllib.request.urlopen(req, timeout=6)
-    except Exception as e:
-        st.toast(f"Notification Error: {e}")
+        urllib.request.urlopen(req, timeout=8)
+    except Exception:
+        pass
 
 MASTER_KNOWLEDGE_BASE = f"""
 Company Name: {COMPANY_NAME}
@@ -152,7 +152,6 @@ if prompt:
 
             with st.spinner("பதில் தயாராகிறது..."):
                 reply = ""
-                error_logs = []
                 models_to_try = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3-flash-preview", "gemini-3.1-flash-lite-preview"]
                 for model_name in models_to_try:
                     try:
@@ -164,11 +163,10 @@ if prompt:
                         if response and response.text:
                             reply = response.text
                             break
-                    except Exception as e:
-                        error_logs.append(f"{model_name}: {str(e)[:90]}")
+                    except Exception:
                         time.sleep(1)
 
-                reply = reply or f"⚠️ தற்போது ஏஐ சர்வர் பிஸியாக உள்ளது. விவரம்: {' | '.join(error_logs)}"
+                reply = reply or "⚠️ தற்போது ஏஐ சர்வர் அதிகப்படியான பயன்பாட்டில் உள்ளது. தயவுசெய்து சற்று நேரம் கழித்து மீண்டும் முயற்சிக்கவும்."
 
             st.markdown(reply)
             st.session_state.messages.append({"role": "assistant", "content": reply})
