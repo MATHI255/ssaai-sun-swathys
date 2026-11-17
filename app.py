@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import urllib.parse
 import urllib.request
@@ -34,20 +35,23 @@ client = get_client()
 
 def send_instant_lead_alert(customer_msg, chat_history):
     try:
-        recent_context = "\n".join([f"{m['role'].upper()}: {m['content'][:160]}" for m in chat_history[-4:]])
-        alert_body = f"New Customer Lead!\nMessage: {customer_msg}\n\nRecent Chat:\n{recent_context}"
+        recent_context = "\n".join([f"{m['role'].upper()}: {m['content'][:160]}" for m in chat_history[-6:]])
+        alert_body = f"New Lead Alert!\nLatest Input: {customer_msg}\n\nChat Summary:\n{recent_context}"
         req = urllib.request.Request(
             f"https://ntfy.sh{NTFY_TOPIC}",
             data=alert_body.encode("utf-8"),
+            method="POST",
             headers={
+                "User-Agent": "SSAAI-Aqua-Bot/1.0",
                 "Title": "New Fish Farm Lead - SSAAI",
-                "Priority": "high",
+                "Priority": "5",
                 "Tags": "fish,telephone_receiver"
             }
         )
-        urllib.request.urlopen(req, timeout=8)
-    except Exception:
-        pass
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return resp.status == 200, f"HTTP {resp.status}"
+    except Exception as e:
+        return False, str(e)
 
 MASTER_KNOWLEDGE_BASE = f"""
 Company Name: {COMPANY_NAME}
@@ -171,10 +175,13 @@ if prompt:
             st.markdown(reply)
             st.session_state.messages.append({"role": "assistant", "content": reply})
 
+            # 10 இலக்க மொபைல் எண் உள்ளதா எனச் சரிபார்த்து உடனடி நோட்டிபிகேஷன் அனுப்புதல்
             combined_text = f"{user_text} {reply}"
-            digits = "".join([c for c in combined_text if c.isdigit()])
-            if len(digits) >= 10:
-                send_instant_lead_alert(user_text if user_text else reply, st.session_state.messages)
+            phone_match = re.search(r"\b\d{10}\b", combined_text.replace(" ", "").replace("-", ""))
+            if phone_match:
+                ok, status_msg = send_instant_lead_alert(user_text if user_text else reply, st.session_state.messages)
+                if not ok:
+                    st.error(f"Alert Error: {status_msg}")
 
             wa_msg = urllib.parse.quote("வணக்கம் Sun Swathys Aqua Farm, மீன் தீவனம் / வளர்ப்பு ஆலோசனை தேவை.")
             st.link_button("📲 WhatsApp-ல் நேரடியாகத் தொடர்பு கொள்ள", f"https://wa.me{PRIMARY_WHATSAPP}?text={wa_msg}")
